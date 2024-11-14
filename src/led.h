@@ -5,13 +5,14 @@ class LED
 {
 public:
     // Konstruktor
-    LED(int pin);
+    LED(int pin, String name);
     // Getter-Methode für den Pin
     int getPin() const;
 
     // Setter-Methode für den Pin
     void setPin(int newPin);
 
+    String getName()const;
     // Getter-Methode für den Status
     bool getStatus() const;
 
@@ -19,12 +20,13 @@ public:
     void setStatus(bool newStatus);
     
     // Methode zum Steuern der LED
-    int ledControl(String command);
+    int ledControl(LED& led, String command);
 
     int getLedStatus(String command) const;
 
 private:
-    int pin;     // Pin-Nummer der LED
+    int pin;
+    String name;     // Pin-Nummer der LED
     bool status; // Status der LED (An/Aus)
 };
 

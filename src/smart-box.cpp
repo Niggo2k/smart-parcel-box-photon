@@ -3,6 +3,7 @@
 #include "Adafruit_Sensor.h"
 #include "smart-box.h"
 #include "led.h"
+
 // Let Device OS manage the connection to the Particle Cloud
 SYSTEM_MODE(AUTOMATIC);
 
@@ -13,8 +14,8 @@ SerialLogHandler logHandler(LOG_LEVEL_INFO);
 // Create an instance of the sensor
 Adafruit_LSM9DS1 lsm = Adafruit_LSM9DS1();
 // Create an instance of the LED class
-LED redled(D7);
-
+LED redled(D7, "red");
+LED greenled(D6, "green");
 // Define the rotation values for X, Y, Z axes
 float rotationX,
 rotationY, rotationZ;
@@ -22,28 +23,45 @@ int counter = 0;
 // Threshold value to detect movement (adjust as needed)
 float rotationThreshold = 0.1; // Set a threshold for rotation (in degrees per second)
 
+int getLedStatusInMain(String command)
+{
+    if (command == "red")
+    {
+        return redled.getStatus() ? 1 : 0;
+    }
+    else if (command == "green")
+    {
+        return greenled.getStatus() ? 1 : 0;
+    }
+    else return -1;
+}
 
-int controlLedInMain(String command){
-    if(command == "On"){
-        return redled.ledControl(command);  
+int controlLedInMain(String command)
+{
+    if (command.indexOf("red") != -1)
+    {
+        return redled.ledControl(redled, command);
     }
-    else if(command == "Off"){
-        return redled.ledControl(command);
+    else if (command.indexOf("green") != -1)
+    {
+        return greenled.ledControl(greenled, command);
     }
-    else{
+    else
+    {
         return -1;
     }
 }
 
 void setup()
 {
-   
+
     Serial.begin(9600); // Start the serial communication
     delay(1000);        // Wait for the serial communication to initialize
-
-    //Particle.variable("redLed", redled.getLedStatus());
+    controlLedInMain("red_on");
+    Serial.println("SETUP FUNCTION MAINNN");
+    // Particle.variable("redLed", redled.getLedStatus());
     Particle.function("controlLedInMain", controlLedInMain);
-    //Particle.function("getLedStatus", getLedStatus);
+    // Particle.function("getLedStatus", getLedStatus);
 
     //   // Initialize the sensor
     //   if (!lsm.begin())

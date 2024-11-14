@@ -1,29 +1,62 @@
 #include "led.h"
 #include "Particle.h"
+#include <iostream>
+#include <sstream>
+using namespace std;
 
 // Konstruktor: Initialisiert die LED am angegebenen Pin
-LED::LED(int pin) : pin(pin), status(false)
+LED::LED(int pin, String _name) : pin(pin), name(_name), status(false)
 {
     pinMode(pin, OUTPUT);
     digitalWrite(pin, LOW); // LED startet ausgeschaltet
 }
 
 // Methode zum Steuern der LED
-int LED::ledControl(String command)
+int LED::ledControl(LED &led, String command)
 {
-    if (command == "On")
+    string ledName, ledMode;
+    istringstream stream(command.c_str());
+    getline(stream, ledName, '_'); // Extract the LED name (e.g., "red" or "green")
+    getline(stream, ledMode);      // Extract the LED mode (e.g., "on" or "off")
+
+    // Check if the LED name is "red"
+    if (ledName == "red")
     {
-        digitalWrite(pin, HIGH);
-        status = true;
-        return 0; // Erfolg
+        if (ledMode == "on")
+        {
+            digitalWrite(led.getPin(), HIGH); // Turn on the red LED
+            led.setStatus(true);
+            return 1;
+        }
+        else if (ledMode == "off")
+        {
+            digitalWrite(led.getPin(), LOW); // Turn off the red LED
+            led.setStatus(false);
+            return 0;
+        }
     }
-    else if (command == "Off")
+    // Check if the LED name is "green"
+    else if (ledName == "green")
     {
-        digitalWrite(pin, LOW);
-        status = false;
-        return 0; // Erfolg
-    } 
-    return -1;
+        if (ledMode == "on")
+        {
+            digitalWrite(led.getPin(), HIGH); // Turn on the green LED
+            led.setStatus(true);
+            return 1;
+        }
+        else if (ledMode == "off")
+        {
+            digitalWrite(led.getPin(), LOW); // Turn off the green LED
+            led.setStatus(false);
+            return 0;
+        }
+    }
+    // If the LED name is neither "red" nor "green", return -1
+    else
+    {
+        return -1;
+    }
+    return -1; // Default return value if no conditions are met
 }
 
 // Methode zur Abfrage des LED-Status
@@ -57,4 +90,8 @@ void LED::setStatus(bool newStatus)
 {
     status = newStatus;
     digitalWrite(pin, status ? HIGH : LOW); // Schalte die LED entsprechend dem neuen Status
+}
+
+String LED::getName() const{
+    return name;
 }
