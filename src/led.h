@@ -24,6 +24,7 @@ public:
 
     int getLedStatus(String command) const;
 
+
 private:
     int pin;
     String name;     // Pin-Nummer der LED

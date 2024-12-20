@@ -24,6 +24,7 @@ int LED::ledControl(LED &led, String command)
     {
         if (ledMode == "on")
         {
+        
             digitalWrite(led.getPin(), HIGH); // Turn on the red LED
             led.setStatus(true);
             return 1;
@@ -40,6 +41,8 @@ int LED::ledControl(LED &led, String command)
     {
         if (ledMode == "on")
         {
+            String largeJson = "{\"sensor1\": {\"temperature\": 22.5, \"humidity\": 60}, \"sensor2\": {\"temperature\": 23.0, \"humidity\": 55}, \"sensor3\": {\"temperature\": 24.0, \"humidity\": 65}}";
+            Particle.publish("String", largeJson);
             digitalWrite(led.getPin(), HIGH); // Turn on the green LED
             led.setStatus(true);
             return 1;
