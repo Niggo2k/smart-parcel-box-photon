@@ -3,6 +3,7 @@
 #include "Adafruit_Sensor.h"
 #include "smart-box.h"
 #include "led.h"
+#include "HX711ADC.h"
 
 // Let Device OS manage the connection to the Particle Cloud
 SYSTEM_MODE(AUTOMATIC);
@@ -13,12 +14,19 @@ SerialLogHandler logHandler(LOG_LEVEL_INFO);
 
 #define ACC_THRESHOLD 2.0  // Beschleunigung in g
 #define GYRO_THRESHOLD 100 // Drehgeschwindigkeit in dps
-
+#define DT D5
+#define SCK D6
 // Create an instance of the sensor
 Adafruit_LSM9DS1 lsm = Adafruit_LSM9DS1();
+HX711ADC scale(DT, SCK);
+
 // Create an instance of the LED class
-LED redled(D6, "red");
-LED greenled(D7, "green");
+// LED redled(D6, "red");
+// LED greenled(D7, "green");
+
+int transistor_lock_pin = D2;
+
+
 // Define the rotation values for X, Y, Z axes
 float rotationX,
 rotationY, rotationZ;
@@ -26,53 +34,82 @@ int counter = 0;
 // Threshold value to detect movement (adjust as needed)
 float rotationThreshold = 0.1; // Set a threshold for rotation (in degrees per second)
 
-int getLedStatusInMain(String command)
+// int getLedStatusInMain(String command)
+// {
+//     if (command == "red")
+//     {
+//         return redled.getStatus() ? 1 : 0;
+//     }
+//     else if (command == "green")
+//     {
+//         return greenled.getStatus() ? 1 : 0;
+//     }
+//     else return -1;
+// }
+
+// int controlLedInMain(String command)
+// {
+//     if (command.indexOf("red") != -1)
+//     {
+//         return redled.ledControl(redled, command);
+//     }
+//     else if (command.indexOf("green") != -1)
+//     {
+//         return greenled.ledControl(greenled, command);
+//     }
+//     else
+//     {
+//         return -1;
+//     }
+// }
+
+int ControlLockOfParcelBox(String command)
 {
-    if (command == "red")
+    if (command == "openbox")
     {
-        return redled.getStatus() ? 1 : 0;
+        digitalWrite(transistor_lock_pin, HIGH);
+        return 1;
     }
-    else if (command == "green")
+    else if(command == "closebox")
     {
-        return greenled.getStatus() ? 1 : 0;
+        digitalWrite(transistor_lock_pin, LOW);
+        return 0;
     }
-    else return -1;
+
+    else {
+        return -1; 
+    }
 }
 
-int controlLedInMain(String command)
-{
-    if (command.indexOf("red") != -1)
-    {
-        return redled.ledControl(redled, command);
-    }
-    else if (command.indexOf("green") != -1)
-    {
-        return greenled.ledControl(greenled, command);
-    }
-    else
-    {
-        return -1;
-    }
-}
 
 void setup()
 {
 
     Serial.begin(9600); // Start the serial communication
     delay(1000);        // Wait for the serial communication to initialize
-    controlLedInMain("red_on");
+
+    scale.begin();           // HX711 initialisieren
+    scale.set_scale(2280.f); // Setze den Kalibrierungsfaktor (muss angepasst werden)
+    scale.tare();            // Tarieren (setzt das Gewicht auf Null)
+    Serial.println("HX711 Wägezelle Initialisiert");
+
+    pinMode(transistor_lock_pin, OUTPUT); // sets the Pin to control the lock mechanism
+
+    //controlLedInMain("red_on");
     Serial.println("SETUP FUNCTION MAINNN");
+
+    Particle.function("ControlLockOfParcelBox", ControlLockOfParcelBox);
+    //Particle.function("controlLedInMain", controlLedInMain);
     // Particle.variable("redLed", redled.getLedStatus());
-    Particle.function("controlLedInMain", controlLedInMain);
     // Particle.function("getLedStatus", getLedStatus);
 
     // Initialize the sensor
-       if (!lsm.begin())
-       {
-         Serial.println("Error: LSM9DS1 sensor not found!");
-         while (1); // Stop execution if the sensor is not found
-       }
-       Serial.println("LSM9DS1 sensor initialized successfully!");
+    //    if (!lsm.begin())
+    //    {
+    //      Serial.println("Error: LSM9DS1 sensor not found!");
+    //      while (1); // Stop execution if the sensor is not found
+    //    }
+    //    Serial.println("LSM9DS1 sensor initialized successfully!");
 }
 
 // Function to check if any rotation values exceed the threshold
@@ -86,41 +123,47 @@ void setup()
 
 void loop()
 {
-    // Fetch the sensor data (accelerometer, gyroscope, and magnetometer)
-       lsm.read();
-       sensors_event_t accelEvent, gyroEvent, magEvent, tempEvent;
-       lsm.getEvent(&accelEvent, &gyroEvent, &magEvent, &tempEvent);
 
-       // Get the rotation (gyroscope) values in degrees per second (dps)
-    float accelX = accelEvent.acceleration.x;
-    float accelY = accelEvent.acceleration.y;
-    float accelZ = accelEvent.acceleration.z;
+    long weight = scale.get_units(10); // 10 Messungen mitteln
+    Serial.print("Aktuelles Gewicht: ");
+    Serial.print(weight); // Gewicht (in Gramm) ausgeben
+    Serial.println(" g");
+    delay(1000); // Eine Sekunde warten
 
-    float gyroX = gyroEvent.gyro.x;
-    float gyroY = gyroEvent.gyro.y;
-    float gyroZ = gyroEvent.gyro.z;
+    //     // Fetch the sensor data (accelerometer, gyroscope, and magnetometer)
+    //        lsm.read();
+    //        sensors_event_t accelEvent, gyroEvent, magEvent, tempEvent;
+    //        lsm.getEvent(&accelEvent, &gyroEvent, &magEvent, &tempEvent);
 
-   float dynamicAccelX = accelX;
-   float dynamicAccelY = accelY;
-   float dynamicAccelZ = accelZ - 9.81; // Gravitation entfernen
+    //        // Get the rotation (gyroscope) values in degrees per second (dps)
+    //     float accelX = accelEvent.acceleration.x;
+    //     float accelY = accelEvent.acceleration.y;
+    //     float accelZ = accelEvent.acceleration.z;
 
-   float totalDynamicAccel = sqrt(dynamicAccelX * dynamicAccelX +
-                                 dynamicAccelY * dynamicAccelY +
-                                 dynamicAccelZ * dynamicAccelZ);
+    //     float gyroX = gyroEvent.gyro.x;
+    //     float gyroY = gyroEvent.gyro.y;
+    //     float gyroZ = gyroEvent.gyro.z;
 
-  // Prüfe auf Schwellenüberschreitung
-  if (totalDynamicAccel > ACC_THRESHOLD || abs(gyroX) > GYRO_THRESHOLD || abs(gyroY) > GYRO_THRESHOLD || abs(gyroZ) > GYRO_THRESHOLD) {
-    Serial.println("Bewegung erkannt! ALARM!");
-    Particle.publish("ALARM", "ALARM!");
-    delay(1000*2);
-    Serial.println(totalDynamicAccel);
-    Serial.println(gyroX);
-    Serial.println(gyroY);
-    Serial.println(gyroZ);
-  } else {
-    Serial.println("Kein Alarm mehr!");
-    delay(1000);
-  }
+    //    float dynamicAccelX = accelX;
+    //    float dynamicAccelY = accelY;
+    //    float dynamicAccelZ = accelZ - 9.81; // Gravitation entfernen
 
-  delay(50);
+    //    float totalDynamicAccel = sqrt(dynamicAccelX * dynamicAccelX +
+    //                                  dynamicAccelY * dynamicAccelY +
+    //                                  dynamicAccelZ * dynamicAccelZ);
+
+    //   // Prüfe auf Schwellenüberschreitung
+    //   if (totalDynamicAccel > ACC_THRESHOLD || abs(gyroX) > GYRO_THRESHOLD || abs(gyroY) > GYRO_THRESHOLD || abs(gyroZ) > GYRO_THRESHOLD) {
+    //     Serial.println("Bewegung erkannt! ALARM!");
+    //     Particle.publish("ALARM", "ALARM!");
+    //     delay(1000*2);
+    //     Serial.println(totalDynamicAccel);
+    //     Serial.println(gyroX);
+    //     Serial.println(gyroY);
+    //     Serial.println(gyroZ);
+    //   } else {
+    //     Serial.println("Kein Alarm mehr!");
+    //     delay(1000);
+    //   }
+
 }
