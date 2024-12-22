@@ -14,22 +14,25 @@ SerialLogHandler logHandler(LOG_LEVEL_INFO);
 
 #define ACC_THRESHOLD 2.0  // Beschleunigung in g
 #define GYRO_THRESHOLD 100 // Drehgeschwindigkeit in dps
-#define DT D5
-#define SCK D6
+#define HX711_DT D5
+#define HX711_CLK D6
+#define MAGNETIC_CONTACT_PIN D7
+
+int transistor_lock_pin = D3;
+
+int box_cover_status = 0 ;
 // Create an instance of the sensor
 Adafruit_LSM9DS1 lsm = Adafruit_LSM9DS1();
-HX711ADC scale(DT, SCK);
+HX711ADC scale;
 
 // Create an instance of the LED class
 // LED redled(D6, "red");
 // LED greenled(D7, "green");
 
-int transistor_lock_pin = D2;
 
 
 // Define the rotation values for X, Y, Z axes
-float rotationX,
-rotationY, rotationZ;
+float rotationX,rotationY, rotationZ;
 int counter = 0;
 // Threshold value to detect movement (adjust as needed)
 float rotationThreshold = 0.1; // Set a threshold for rotation (in degrees per second)
@@ -68,17 +71,33 @@ int ControlLockOfParcelBox(String command)
     if (command == "openbox")
     {
         digitalWrite(transistor_lock_pin, HIGH);
+        delay(100);
+        digitalWrite(transistor_lock_pin, LOW);
         return 1;
     }
-    else if(command == "closebox")
-    {
-        digitalWrite(transistor_lock_pin, LOW);
-        return 0;
-    }
 
-    else {
-        return -1; 
+    else
+    {
+        return -1;
     }
+}
+
+int GetBoxStatus(String command){
+    
+    if (command == "boxstatus"){
+        if (box_cover_status == HIGH)
+        {
+            return 0;
+        }
+        else if (box_cover_status == LOW)
+        {
+            return 1;
+        }
+    }
+   
+    
+    return -1;
+    
 }
 
 
@@ -88,20 +107,29 @@ void setup()
     Serial.begin(9600); // Start the serial communication
     delay(1000);        // Wait for the serial communication to initialize
 
-    scale.begin();           // HX711 initialisieren
-    scale.set_scale(2280.f); // Setze den Kalibrierungsfaktor (muss angepasst werden)
-    scale.tare();            // Tarieren (setzt das Gewicht auf Null)
-    Serial.println("HX711 Wägezelle Initialisiert");
+    scale.begin(HX711_DT,HX711_CLK);           // HX711 initialisieren
+
+    Serial.println("Kalibrierung...");
+    delay(2000);
+
+    // Nullpunkt setzen
+    scale.set_scale(); // Standardkalibrierung verwenden
+    scale.tare();      // Aktuelles Gewicht als Null setzen
+    Serial.println("Kalibrierung abgeschlossen!");
 
     pinMode(transistor_lock_pin, OUTPUT); // sets the Pin to control the lock mechanism
-
-    //controlLedInMain("red_on");
+    pinMode(MAGNETIC_CONTACT_PIN, INPUT_PULLUP);
+    // controlLedInMain("red_on");
     Serial.println("SETUP FUNCTION MAINNN");
 
     Particle.function("ControlLockOfParcelBox", ControlLockOfParcelBox);
-    //Particle.function("controlLedInMain", controlLedInMain);
-    // Particle.variable("redLed", redled.getLedStatus());
-    // Particle.function("getLedStatus", getLedStatus);
+    Particle.function("GetBoxStatus", GetBoxStatus);
+    
+    // WebHook
+    
+    // Particle.function("controlLedInMain", controlLedInMain);
+    //  Particle.variable("redLed", redled.getLedStatus());
+    //  Particle.function("getLedStatus", getLedStatus);
 
     // Initialize the sensor
     //    if (!lsm.begin())
@@ -113,23 +141,57 @@ void setup()
 }
 
 // Function to check if any rotation values exceed the threshold
- void checkRotationValues(float x, float y, float z)
- {
-   if (fabs(x) > rotationThreshold || fabs(y) > rotationThreshold || fabs(z) > rotationThreshold)
-   {
-     Serial.println("Paket geklaut!"); // Output the message if movement is detected
-   }
- }
+void checkRotationValues(float x, float y, float z)
+{
+    if (fabs(x) > rotationThreshold || fabs(y) > rotationThreshold || fabs(z) > rotationThreshold)
+    {
+        Serial.println("Paket geklaut!"); // Output the message if movement is detected
+    }
+}
+
+void SafteyTurnOffLockPin(int lock_pin_status){
+    if(lock_pin_status == HIGH){
+        digitalWrite(transistor_lock_pin, LOW);
+    }
+    else {
+        return;
+    }
+}
 
 void loop()
 {
 
-    long weight = scale.get_units(10); // 10 Messungen mitteln
-    Serial.print("Aktuelles Gewicht: ");
-    Serial.print(weight); // Gewicht (in Gramm) ausgeben
-    Serial.println(" g");
-    delay(1000); // Eine Sekunde warten
+    int lock_pin_status = digitalRead(transistor_lock_pin);
+    Serial.println(lock_pin_status);        // Gibt 1 (HIGH) oder 0 (LOW) aus
+    SafteyTurnOffLockPin(lock_pin_status);
 
+    int contactState = digitalRead(MAGNETIC_CONTACT_PIN); // Status des Magnetkontakts lesen
+    
+    if(contactState != box_cover_status) {
+        box_cover_status = contactState;
+        Particle.publish("boxstatus", String(box_cover_status), PRIVATE);
+    }
+    // read the value of the box cover status
+    box_cover_status = contactState;
+
+    if (contactState == HIGH)
+    {
+        Serial.println("BOX COVER ARE OPEN");
+    }
+    else
+    {
+        Serial.println("BOX COVER ARE CLOSED");
+    }
+
+    
+    
+
+    float weight = scale.get_units(10); // Durchschnitt von 10 Messungen
+    Serial.print("Gewicht: ");
+    Serial.print(weight);
+    Serial.println(" kg");
+
+    delay(200); // Warte 1 Sekunde
     //     // Fetch the sensor data (accelerometer, gyroscope, and magnetometer)
     //        lsm.read();
     //        sensors_event_t accelEvent, gyroEvent, magEvent, tempEvent;
@@ -165,5 +227,4 @@ void loop()
     //     Serial.println("Kein Alarm mehr!");
     //     delay(1000);
     //   }
-
 }
