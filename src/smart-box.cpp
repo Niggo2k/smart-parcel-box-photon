@@ -87,11 +87,11 @@ int GetBoxStatus(String command){
     if (command == "boxstatus"){
         if (box_cover_status == HIGH)
         {
-            return 0;
+            return 1;
         }
         else if (box_cover_status == LOW)
         {
-            return 1;
+            return 0;
         }
     }
    
@@ -113,15 +113,16 @@ void setup()
     delay(2000);
 
     // Nullpunkt setzen
-    scale.set_scale(); // Standardkalibrierung verwenden
+    // Standardkalibrierung verwenden
+    scale.set_scale(); // Passen Sie diesen Wert für Ihre spezielle Waage an
+
     scale.tare();      // Aktuelles Gewicht als Null setzen
     Serial.println("Kalibrierung abgeschlossen!");
 
     pinMode(transistor_lock_pin, OUTPUT); // sets the Pin to control the lock mechanism
     pinMode(MAGNETIC_CONTACT_PIN, INPUT_PULLUP);
     // controlLedInMain("red_on");
-    Serial.println("SETUP FUNCTION MAINNN");
-
+   
     Particle.function("ControlLockOfParcelBox", ControlLockOfParcelBox);
     Particle.function("GetBoxStatus", GetBoxStatus);
     
@@ -160,7 +161,6 @@ void SafteyTurnOffLockPin(int lock_pin_status){
 
 void loop()
 {
-
     int lock_pin_status = digitalRead(transistor_lock_pin);
     Serial.println(lock_pin_status);        // Gibt 1 (HIGH) oder 0 (LOW) aus
     SafteyTurnOffLockPin(lock_pin_status);
@@ -183,15 +183,21 @@ void loop()
         Serial.println("BOX COVER ARE CLOSED");
     }
 
+        float testWeigth = scale.get_units();
+        Serial.println("Test Weigth:");
+        Serial.println(testWeigth);
+
+        float weight = scale.get_scale();
+        Serial.println("Gewicht Waage Neu:");
+        Serial.println(weight);
+   
+        Serial.println("Daten werden verarbeitet");
     
     
 
-    float weight = scale.get_units(10); // Durchschnitt von 10 Messungen
-    Serial.print("Gewicht: ");
-    Serial.print(weight);
-    Serial.println(" kg");
+   
 
-    delay(200); // Warte 1 Sekunde
+    delay(1000); // Warte 1 Sekunde
     //     // Fetch the sensor data (accelerometer, gyroscope, and magnetometer)
     //        lsm.read();
     //        sensors_event_t accelEvent, gyroEvent, magEvent, tempEvent;
