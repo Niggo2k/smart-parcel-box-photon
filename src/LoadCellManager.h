@@ -6,6 +6,7 @@
 
 extern HX711ADC LoadCell;
 extern double globalWeight;
+extern double previousWeight;
 
 void setupLoadCell();
 int GetWeight(String command);
