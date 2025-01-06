@@ -2,6 +2,7 @@
 #include "Particle.h"
 
 double globalWeight = 0.0;
+double previousWeight = 0.0;
 #define HX711_DT D5
 #define HX711_CLK D6
 
@@ -21,6 +22,7 @@ int GetWeight(String command) {
     float weight = LoadCell.get_units(10);
     float weightKg = weight / 1000.0;
     globalWeight = round(weightKg * 10) / 10.0;
+    checkWeightChange();
     return 1;
 }
 
@@ -41,4 +43,11 @@ int calibrateScale(String command) {
     LoadCell.set_scale(scaleFactor);
     Serial.println("Calibration complete.");
     return 1;
+}
+
+void checkWeightChange() {
+    if (abs(globalWeight - previousWeight) > 0.2) {
+        Particle.publish("weightChange", String(globalWeight), PRIVATE);
+        previousWeight = globalWeight;
+    }
 }

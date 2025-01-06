@@ -11,5 +11,6 @@ void setupLoadCell();
 int GetWeight(String command);
 int calibrateScale(String command);
 int TareWeight(String command);
+void checkWeightChange();
 
 #endif // LOADCELLMANAGER_H
