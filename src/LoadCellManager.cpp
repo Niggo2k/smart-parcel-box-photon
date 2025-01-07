@@ -51,18 +51,12 @@ int calibrateScale(String command) {
 
 void checkWeightChange() {
     if (abs(globalWeight - previousWeight) > 0.2) {
-        weight = globalWeight;
         consecutiveCount++;
+    }else {
+        consecutiveCount = 0;
     }
 
-    if(consecutiveCount >= 1) {
-        if(globalWeight == weight) {
-            consecutiveCount++;
-        }
-
-    }
-
-    if (consecutiveCount >= 5) {
+    if (consecutiveCount >= 3) {
         Particle.publish("weightChange", String(globalWeight), PRIVATE);
         previousWeight = globalWeight;
         consecutiveCount = 0;  // Reset the counter after publishing
