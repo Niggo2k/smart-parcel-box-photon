@@ -3,15 +3,17 @@
 
 double globalWeight = 0.0;
 double previousWeight = 0.0;
-#define HX711_DT D5
-#define HX711_CLK D6
+double weight = 0.0;
+int consecutiveCount = 0;
+#define HX711_DT D6
+#define HX711_CLK D5
 
 HX711ADC LoadCell(HX711_DT, HX711_CLK);
 
 void setupLoadCell() {
     LoadCell.begin();
     LoadCell.tare();
-    LoadCell.set_scale(12.70f);
+    LoadCell.set_scale(21.643911f);
     Particle.variable("weight", globalWeight);
     Particle.function("GetWeight", GetWeight);
     Particle.function("CalibrateScale", calibrateScale);
@@ -20,6 +22,7 @@ void setupLoadCell() {
 
 int GetWeight(String command) {
     float weight = LoadCell.get_units(10);
+    Serial.println(weight);
     float weightKg = weight / 1000.0;
     globalWeight = round(weightKg * 10) / 10.0;
     checkWeightChange();
@@ -41,13 +44,27 @@ int calibrateScale(String command) {
     float reading = LoadCell.get_units(10);
     float scaleFactor = reading / knownWeight;
     LoadCell.set_scale(scaleFactor);
+    Serial.println("Scale factor set to: " + String(scaleFactor));
     Serial.println("Calibration complete.");
     return 1;
 }
 
 void checkWeightChange() {
     if (abs(globalWeight - previousWeight) > 0.2) {
+        weight = globalWeight;
+        consecutiveCount++;
+    }
+
+    if(consecutiveCount >= 1) {
+        if(globalWeight == weight) {
+            consecutiveCount++;
+        }
+
+    }
+
+    if (consecutiveCount >= 5) {
         Particle.publish("weightChange", String(globalWeight), PRIVATE);
         previousWeight = globalWeight;
+        consecutiveCount = 0;  // Reset the counter after publishing
     }
 }
