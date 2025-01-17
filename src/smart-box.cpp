@@ -3,6 +3,7 @@
 #include "LoadCellManager.h"
 #include "LockControl.h"
 #include "BoxStatus.h"
+#include "GyroManager.h"
 
 // Let Device OS manage the connection to the Particle Cloud
 SYSTEM_MODE(AUTOMATIC);
@@ -23,7 +24,7 @@ void setup()
     setupLoadCell();
     setupLockControl();
     setupBoxStatus();
-
+    setupGyroManager();
     Serial.println("Readings:");
 }
 
@@ -47,6 +48,8 @@ void loop()
     char weightStr[10];
     snprintf(weightStr, sizeof(weightStr), "%.1f", globalWeight);
 
+
+    readSensors();
     // Optional: Add a delay if needed
     delay(1000);  // Wait for 1 second
 }

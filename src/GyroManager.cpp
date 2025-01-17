@@ -39,12 +39,14 @@ void readSensors() {
     totalDynamicAccel = sqrt(dynamicAccelX * dynamicAccelX +
                              dynamicAccelY * dynamicAccelY +
                              dynamicAccelZ * dynamicAccelZ);
+
+    checkForMovement();
 }
 
 void checkForMovement() {
     if (totalDynamicAccel > ACC_THRESHOLD || abs(gyroX) > GYRO_THRESHOLD || abs(gyroY) > GYRO_THRESHOLD || abs(gyroZ) > GYRO_THRESHOLD) {
         Serial.println("Movement detected! ALARM!");
-        Particle.publish("ALARM", "ALARM!");
+        Particle.publish("ALARM", "ALARM");
         delay(2000);
         Serial.println(totalDynamicAccel);
         Serial.println(gyroX);
